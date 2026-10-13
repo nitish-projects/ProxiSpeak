@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ProxiSpeak — Microphone Exercise</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #eef3f7;
+      color: #183044;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: 100%;
+      max-width: 560px;
+      padding: 32px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px #18304415;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    p {
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 24px 0;
+    }
+
+    button {
+      padding: 12px 18px;
+      border: 0;
+      border-radius: 8px;
+      background: #175b85;
+      color: white;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #d89618;
+      outline-offset: 3px;
+    }
+
+    #status {
+      padding: 14px;
+      border-radius: 8px;
+      background: #eef3f7;
+    }
+
+    .note {
+      color: #5a6d7a;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>ProxiSpeak</h1>
+    <p>Exercise 1: microphone access and controls.</p>
+
+    <p id="status" role="status" aria-live="polite">
+      Microphone is off.
+    </p>
+
+    <div class="controls">
+      <button id="start">Start microphone</button>
+      <button id="mute" disabled>Mute</button>
+      <button id="stop" disabled>Stop microphone</button>
+    </div>
+
+    <p class="note">
+      This exercise does not record, play back, or send your audio.
+      Mute keeps the track available; Stop ends it.
+    </p>
+  </main>
+
+  <script>
+    const startButton = document.getElementById("start");
+    const muteButton = document.getElementById("mute");
+    const stopButton = document.getElementById("stop");
+    const statusText = document.getElementById("status");
+
+    let stream = null;
+    let requesting = false;
+    let requestId = 0;
+
+    function updateButtons() {
+      startButton.disabled = requesting || stream !== null;
+      muteButton.disabled = stream === null;
+      stopButton.disabled = !requesting && stream === null;
+
+      const track = stream?.getAudioTracks()[0];
+
+      muteButton.textContent =
+        track && !track.enabled ? "Unmute" : "Mute";
+    }
+
+    function stopMicrophone(message = "Microphone is off.") {
+      // Invalidates any permission request still awaiting a response.
+      requestId++;
+      requesting = false;
+
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        stream = null;
+      }
+
+      statusText.textContent = message;
+      updateButtons();
+    }
+
+    async function startMicrophone() {
+      if (requesting || stream) return;
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        statusText.textContent =
+          "Microphone access is unavailable. Open the local server URL.";
+        return;
+      }
+
+      const currentRequest = ++requestId;
+
+      requesting = true;
+      statusText.textContent =
+        "Waiting for microphone permission. Choose Allow in your browser.";
+      updateButtons();
+
+      try {
+        const newStream =
+          await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: false,
+          });
+
+        // If Stop was clicked while permission was pending,
+        // immediately release this late-arriving stream.
+        if (currentRequest !== requestId) {
+          newStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        stream = newStream;
+
+        const track = stream.getAudioTracks()[0];
+
+        track.addEventListener("ended", () => {
+          if (stream === newStream) {
+            stopMicrophone(
+              "Microphone became unavailable. Check your device and restart."
+            );
+          }
+        });
+
+        statusText.textContent = "Microphone is active.";
+      } catch (error) {
+        if (currentRequest !== requestId) return;
+
+        const messages = {
+          NotAllowedError:
+            "Microphone access was blocked. Check browser and Windows permissions.",
+          NotFoundError:
+            "No microphone was found. Connect one and try again.",
+          NotReadableError:
+            "The microphone could not be opened. Check your device or other apps.",
+          AbortError:
+            "Microphone startup was interrupted. Try again.",
+        };
+
+        statusText.textContent =
+          messages[error.name] ||
+          `Could not start microphone: ${error.name}`;
+      } finally {
+        if (currentRequest === requestId) {
+          requesting = false;
+          updateButtons();
+        }
+      }
+    }
+
+    function toggleMute() {
+      const track = stream?.getAudioTracks()[0];
+      if (!track) return;
+
+      track.enabled = !track.enabled;
+
+      statusText.textContent = track.enabled
+        ? "Microphone is active."
+        : "Microphone is muted.";
+
+      updateButtons();
+    }
+
+    startButton.addEventListener("click", startMicrophone);
+    muteButton.addEventListener("click", toggleMute);
+    stopButton.addEventListener("click", () => stopMicrophone());
+
+    window.addEventListener("pagehide", () => stopMicrophone());
+  </script>
+</body>
+</html>
