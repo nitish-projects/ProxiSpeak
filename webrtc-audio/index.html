@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ProxiSpeak — Two-Peer Audio</title>
+
+  <title>ProxiSpeak — Spatial Audio Lab</title>
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -14,33 +17,68 @@
       background: #eef3f7;
       color: #183044;
       font-family: Arial, sans-serif;
+      line-height: 1.6;
     }
 
     main {
-      max-width: 680px;
-      margin: 30px auto;
+      max-width: 760px;
+      margin: 24px auto;
       padding: 28px;
-      background: white;
+      background: #ffffff;
       border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(24, 48, 68, 0.08);
     }
 
-    p { line-height: 1.6; }
+    h1,
+    h2 {
+      line-height: 1.25;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 21px;
+    }
+
+    section {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid #d6e1e8;
+    }
+
+    .intro,
+    .help {
+      color: #465e70;
+    }
+
+    .help {
+      font-size: 14px;
+    }
 
     .controls {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin: 20px 0;
+      margin: 18px 0;
     }
 
     button {
       padding: 12px 16px;
       background: #175b85;
-      color: white;
+      color: #ffffff;
       border: 0;
       border-radius: 8px;
       font: inherit;
+      font-weight: 600;
       cursor: pointer;
+    }
+
+    button:hover:not(:disabled) {
+      background: #104767;
     }
 
     button:disabled {
@@ -48,60 +86,380 @@
       cursor: not-allowed;
     }
 
-    button:focus-visible {
+    button:focus-visible,
+    input:focus-visible,
+    summary:focus-visible,
+    pre:focus-visible {
       outline: 3px solid #d89618;
       outline-offset: 3px;
     }
 
-    #status {
-      padding: 14px;
-      background: #eef3f7;
-      border-radius: 8px;
+    #stop {
+      background: #9a3540;
     }
 
-    audio { width: 100%; }
+    #stop:hover:not(:disabled) {
+      background: #7b2832;
+    }
+
+    .status-box {
+      padding: 14px;
+      background: #eef3f7;
+      border: 1px solid #d6e1e8;
+      border-radius: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .position-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .position-field label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    input[type="number"] {
+      display: block;
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      color: #183044;
+      background: #ffffff;
+      border: 1px solid #9aafbe;
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    .spatial-control {
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid #d6e1e8;
+      border-radius: 10px;
+    }
+
+    .spatial-control label {
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    input[type="range"] {
+      display: block;
+      width: 100%;
+      min-height: 28px;
+      accent-color: #175b85;
+    }
+
+    input[type="range"]:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .spatial-control p {
+      margin-bottom: 0;
+      font-size: 14px;
+    }
+
+    .note {
+      padding: 14px 16px;
+      background: #fff7e5;
+      border-left: 4px solid #d89618;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    details {
+      margin-top: 20px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    code {
+      padding: 2px 5px;
+      background: #eef3f7;
+      border-radius: 4px;
+    }
 
     pre {
-      padding: 14px;
+      min-height: 100px;
+      max-height: 280px;
+      margin-bottom: 0;
+      padding: 16px;
+      overflow-y: auto;
       background: #142a38;
       color: #d9f1e7;
       border-radius: 8px;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
-      max-height: 250px;
-      overflow-y: auto;
-      font-size: 12px;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 12px;
+      }
+
+      main {
+        margin: 12px auto;
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .position-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .controls button {
+        width: 100%;
+      }
     }
   </style>
 </head>
 
 <body>
   <main>
-    <h1>ProxiSpeak Audio Lab</h1>
-    <p>Open this page in two tabs. Start audio in each tab.</p>
+    <header>
+      <h1>ProxiSpeak Audio Lab</h1>
 
-    <p>Signaling: <strong id="signaling">Connecting…</strong></p>
-    <p id="status" role="status" aria-live="polite">Microphone is off.</p>
+      <p class="intro">
+        Test voice chat between two browser tabs and hear how avatar
+        positions change the volume and left/right direction.
+      </p>
 
-    <div class="controls">
-      <button id="start" disabled>Start audio</button>
-      <button id="mute" disabled>Mute microphone</button>
-      <button id="stop" disabled>Stop session</button>
-    </div>
+      <p class="note">
+        Use headphones during testing to avoid feedback.
+        Open this page in two tabs and start audio in both.
+      </p>
+    </header>
 
-    <h2>Received audio</h2>
-    <p>
-      Use headphones. If playback does not start automatically,
-      press Play below.
-    </p>
+    <section aria-labelledby="sessionHeading">
+      <h2 id="sessionHeading">Audio session</h2>
 
-    <audio id="remoteAudio" autoplay controls></audio>
+      <p>
+        Signaling:
+        <strong id="signaling">Connecting…</strong>
+      </p>
 
-    <h2>Connection log</h2>
-    <pre id="log" aria-label="Connection log"></pre>
+      <p id="status" class="status-box" role="status">
+        Microphone is off.
+      </p>
+
+      <div class="controls">
+        <button id="start" type="button" disabled>
+          Start audio
+        </button>
+
+        <button id="mute" type="button" disabled>
+          Mute microphone
+        </button>
+
+        <button id="stop" type="button" disabled>
+          Stop session
+        </button>
+      </div>
+
+      <p>
+        Audio output:
+        <strong id="audioState">Not started</strong>
+      </p>
+
+      <button id="enableAudio" type="button" disabled>
+        Resume audio output
+      </button>
+
+      <p class="help">
+        If the call connects but playback is suspended, click
+        “Resume audio output”.
+      </p>
+    </section>
+
+    <section aria-labelledby="positionHeading">
+      <h2 id="positionHeading">Your avatar position</h2>
+
+      <p>
+        Enter your avatar’s coordinates, then click “Move avatar”.
+        The server sends the updated nearby-user information to both tabs.
+      </p>
+
+      <div class="position-grid">
+        <div class="position-field">
+          <label for="avatarX">X coordinate</label>
+
+          <input
+            id="avatarX"
+            type="number"
+            min="0"
+            max="1000"
+            step="any"
+            value="50"
+            inputmode="decimal"
+            aria-describedby="positionHelp"
+          />
+        </div>
+
+        <div class="position-field">
+          <label for="avatarY">Y coordinate</label>
+
+          <input
+            id="avatarY"
+            type="number"
+            min="0"
+            max="1000"
+            step="any"
+            value="40"
+            inputmode="decimal"
+            aria-describedby="positionHelp"
+          />
+        </div>
+      </div>
+
+      <p id="positionHelp" class="help">
+        Both coordinates must be between 0 and 1000.
+        These are virtual map units, not GPS coordinates.
+      </p>
+
+      <div class="controls">
+        <button id="moveAvatar" type="button">
+          Move avatar
+        </button>
+      </div>
+
+      <p id="proximityStatus" class="status-box" role="status">
+        Waiting for position data from the server…
+      </p>
+    </section>
+
+    <section aria-labelledby="spatialHeading">
+      <h2 id="spatialHeading">Sound received in this tab</h2>
+
+      <p>
+        These values describe the other participant’s voice as you hear it.
+        During coordinate-based playback, the sliders are disabled and
+        the displayed values update automatically.
+      </p>
+
+      <div class="spatial-control">
+        <label for="distance">
+          Distance:
+          <strong id="distanceValue">0</strong> map units
+        </label>
+
+        <input
+          id="distance"
+          type="range"
+          min="0"
+          max="150"
+          step="1"
+          value="0"
+          aria-describedby="distanceHelp"
+        />
+
+        <p id="distanceHelp">
+          Volume gain:
+          <strong id="gainValue">100%</strong>
+        </p>
+      </div>
+
+      <div class="spatial-control">
+        <label for="pan">
+          Left/right position:
+          <strong id="panValue">Center</strong>
+        </label>
+
+        <input
+          id="pan"
+          type="range"
+          min="-100"
+          max="100"
+          step="1"
+          value="0"
+          aria-describedby="panHelp"
+        />
+
+        <p id="panHelp">
+          Left: -100 · Center: 0 · Right: +100
+        </p>
+      </div>
+
+      <p class="note">
+        Demo hearing radius: <strong>100 map units</strong>.
+        At 100 units or farther, playback becomes silent.
+        The WebRTC connection remains active.
+      </p>
+
+      <details>
+        <summary>How to test movement</summary>
+
+        <ol>
+          <li>
+            Start audio in both tabs and wait for the connection.
+          </li>
+          <li>
+            In Tab B, set your position to <code>[50, 40]</code>,
+            click “Move avatar”, and mute its microphone.
+            Listen to the received sound in Tab B.
+          </li>
+          <li>
+            Keep Tab A’s microphone unmuted. Move its avatar to
+            <code>[80, 40]</code>. Tab B should hear 70% volume
+            panned toward the right.
+          </li>
+          <li>
+            Move Tab A to <code>[20, 40]</code>.
+            Tab B should hear 70% volume panned toward the left.
+          </li>
+          <li>
+            Move Tab A to <code>[50, 90]</code>.
+            Tab B should hear 50% volume, centered.
+          </li>
+          <li>
+            Move Tab A to <code>[150, 40]</code>.
+            Tab B should become silent.
+          </li>
+          <li>
+            Move Tab A back to <code>[80, 40]</code>.
+            Sound should return without restarting the call.
+          </li>
+        </ol>
+      </details>
+    </section>
+
+    <section aria-labelledby="logHeading">
+      <h2 id="logHeading">Connection log</h2>
+
+      <pre
+        id="log"
+        aria-label="Connection log"
+        tabindex="0"
+      ></pre>
+    </section>
+
+    <noscript>
+      <p class="note">
+        Enable JavaScript in your browser to use this audio lab.
+      </p>
+    </noscript>
   </main>
 
+  <!-- Keep these scripts in this order. -->
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/spatial-math.js"></script>
   <script src="/client.js"></script>
 </body>
 </html>
